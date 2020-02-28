@@ -10,7 +10,7 @@
 # @Last modified time: 19-Feb-2020
 
 from collections import deque
-from .modes import *
+from modes import *
 
 # TODO add doc
 
