@@ -10,9 +10,12 @@
 # @Last modified time: 19-Feb-2020
 
 from collections import deque
+from .modes import *
+
+# TODO add doc
 
 
-class GFPoly:
+class _GFPoly:
     """
     Elements of GF(2^8).
     """
@@ -26,7 +29,7 @@ class GFPoly:
     def __add__(self, other):
         """ Addition is just XOR.
         """
-        return GFPoly(self.val ^ other.val)
+        return _GFPoly(self.val ^ other.val)
 
     def __mul__(self, other):
         """ It's enough to implement multiplying by x and
@@ -39,7 +42,7 @@ class GFPoly:
         x^8 + x^5 + x^4 + x^2 + x  |=XOR _mod=> x^5 + x^3 + x^2 + 1
         """
         if isinstance(other, int):
-            other = GFPoly(other)
+            other = _GFPoly(other)
         res_val = 0
         for i in range(8):    # go through all the degrees of other's poly
             if (1 << i) & other.val:   # check whether i'th bit is zero
@@ -47,9 +50,9 @@ class GFPoly:
                 for j in range(i):     # multiply i times at x
                     tmp = tmp << 1
                     if tmp >= 256:     # modulo if it's necessary
-                        tmp = tmp ^ GFPoly._modulo
+                        tmp = tmp ^ _GFPoly._modulo
                 res_val ^= tmp     # add the i-th result to the global res
-        return GFPoly(res_val)
+        return _GFPoly(res_val)
 
     def __pow__(self, n):
         """ Binary raising to the power of element.
@@ -61,8 +64,8 @@ class GFPoly:
         """
         if n == -1:
             n = 254
-        res = GFPoly(1)
-        a = GFPoly(self.val)
+        res = _GFPoly(1)
+        a = _GFPoly(self.val)
         while n > 0:          # binary raising
             if n & 1:
                 res *= a
@@ -72,7 +75,7 @@ class GFPoly:
 
     def __rmul__(self, other):
         if isinstance(other, int):
-            return GFPoly(other) + self
+            return _GFPoly(other) + self
 
     def __str__(self):
         return f"GFPoly({self.val})"
@@ -81,7 +84,7 @@ class GFPoly:
         return str(self)
 
 
-class GFFourTermPoly:
+class _GFFourTermPoly:
     """
     Elements of GF(2^8)[x] / (x^4 + 1).
     They look like polynomials a0 + a1 x + a2 x^2 + a3 x^3, where
@@ -94,8 +97,8 @@ class GFFourTermPoly:
         self.val = []
         for el in args:
             if isinstance(el, int):
-                self.val.append(GFPoly(el))
-            elif isinstance(el, GFPoly):
+                self.val.append(_GFPoly(el))
+            elif isinstance(el, _GFPoly):
                 self.val.append(el)
             else:
                 raise TypeError(f"Bad type for four term poly: {type(el)}")
@@ -111,11 +114,11 @@ class GFFourTermPoly:
         tmp = deque([0, 3, 2, 1])
         res = [0, 0, 0, 0]
         for i in range(4):
-            res[i] = GFPoly(0)
+            res[i] = _GFPoly(0)
             for j in range(4):
                 res[i] += self.val[tmp[j]] * other.val[j]
             tmp.rotate(1)
-        return GFFourTermPoly(*res)
+        return _GFFourTermPoly(*res)
 
     def __str__(self):
         return f"GFFourTermPoly({self.val})"
@@ -124,7 +127,7 @@ class GFFourTermPoly:
         return str(self)
 
 
-def rotate_left(n, amount):
+def _rotate_left(n, amount):
     tmp = n << amount
     tmp_right = tmp & 255
     tmp_left = tmp & ((1 << 16) - 256)
@@ -132,68 +135,68 @@ def rotate_left(n, amount):
     return tmp_left | tmp_right
 
 
-def sub_byte(state):
+def _sub_byte(state):
 
-    if isinstance(state, GFPoly):
+    if isinstance(state, _GFPoly):
         res = (state ** -1).val
     else:
-        res = (GFPoly(state) ** -1).val
-    res = res ^ rotate_left(res, 4) ^ rotate_left(res, 3) \
-            ^ rotate_left(res, 2) ^ rotate_left(res, 1) ^ 0x63
+        res = (_GFPoly(state) ** -1).val
+    res = res ^ _rotate_left(res, 4) ^ _rotate_left(res, 3) \
+          ^ _rotate_left(res, 2) ^ _rotate_left(res, 1) ^ 0x63
     return res
 
 
-def inv_sub_byte(state):
-    if isinstance(state, GFPoly):
+def _inv_sub_byte(state):
+    if isinstance(state, _GFPoly):
         state = state.val
-    res = rotate_left(state, 1) ^ \
-            rotate_left(state, 3) ^ rotate_left(state, 6) ^ 0x5
-    return (GFPoly(res) ** -1).val
+    res = _rotate_left(state, 1) ^ \
+          _rotate_left(state, 3) ^ _rotate_left(state, 6) ^ 0x5
+    return (_GFPoly(res) ** -1).val
 
 
-S_BOX = tuple([sub_byte(i) for i in range(256)])
-INV_S_BOX = tuple([inv_sub_byte(i) for i in range(256)])
+_S_BOX = tuple([_sub_byte(i) for i in range(256)])
+_INV_S_BOX = tuple([_inv_sub_byte(i) for i in range(256)])
 
 
-def subBytes(state_matrix):
-    res = [[S_BOX[state_matrix[i][j]] for j in range(len(state_matrix[0]))]
+def _subBytes(state_matrix):
+    res = [[_S_BOX[state_matrix[i][j]] for j in range(len(state_matrix[0]))]
             for i in range(len(state_matrix))]
     return res
 
 
-def invSubBytes(state_matrix):
-    res = [[INV_S_BOX[state_matrix[i][j]] for j in range(len(state_matrix[0]))]
+def _invSubBytes(state_matrix):
+    res = [[_INV_S_BOX[state_matrix[i][j]] for j in range(len(state_matrix[0]))]
             for i in range(len(state_matrix))]
     return res
 
 
-def shiftRows(state_matrix):
+def _shiftRows(state_matrix):
     res = [state_matrix[i][i:] + state_matrix[i][:i] for i in range(len(state_matrix))]
     return res
 
 
-def invShiftRows(state_matrix):
+def _invShiftRows(state_matrix):
     res = [state_matrix[i][4-i:] + state_matrix[i][:4-i] for i in range(len(state_matrix))]
     return res
 
 
-def mixColumns(state_matrix):
-    a = GFFourTermPoly(0x02, 0x01, 0x01, 0x03)
+def _mixColumns(state_matrix):
+    a = _GFFourTermPoly(0x02, 0x01, 0x01, 0x03)
     transposed = [[state_matrix[i][j] for i in range(len(state_matrix))]
                      for j in range(len(state_matrix[0]))]
-    res = [(GFFourTermPoly(*el) * a).val for el in transposed]
+    res = [(_GFFourTermPoly(*el) * a).val for el in transposed]
     return [[res[i][j].val for i in range(len(res))] for j in range(len(res[0]))]
 
 
-def invMixColumns(state_matrix):
-    inv_a = GFFourTermPoly(0x0e, 0x09, 0x0d, 0x0b)
+def _invMixColumns(state_matrix):
+    inv_a = _GFFourTermPoly(0x0e, 0x09, 0x0d, 0x0b)
     transposed = [[state_matrix[i][j] for i in range(len(state_matrix))]
                      for j in range(len(state_matrix[0]))]
-    res = [(GFFourTermPoly(*el) * inv_a).val for el in transposed]
+    res = [(_GFFourTermPoly(*el) * inv_a).val for el in transposed]
     return [[res[i][j].val for i in range(len(res))] for j in range(len(res[0]))]
 
 
-def key_extension(key):
+def _keyExpansion(key):
     assert len(key) == 16
     res_keys = [key[i:(i+4)] for i in range(0, 16, 4)]
     res_keys += [0] * (10 * len(res_keys))
@@ -202,9 +205,9 @@ def key_extension(key):
 
         tmp = tmp[1:] + tmp[:1]
 
-        tmp = [S_BOX[el] for el in tmp]
+        tmp = [_S_BOX[el] for el in tmp]
 
-        tmp[0] ^= (GFPoly(0x02) ** i).val
+        tmp[0] ^= (_GFPoly(0x02) ** i).val
         res_keys[4*i + 4] = [x ^ y for x, y in zip(tmp, res_keys[4*i])]
         res_keys[4*i + 5] = [x ^ y for x, y in zip(res_keys[4*i + 4], res_keys[4*i + 1])]
         res_keys[4*i + 6] = [x ^ y for x, y in zip(res_keys[4*i + 5], res_keys[4*i + 2])]
@@ -212,81 +215,98 @@ def key_extension(key):
     return res_keys
 
 
-def addRoundKey(state_matrix, key):
+def _addRoundKey(state_matrix, key):
     transposed = [[state_matrix[i][j] for i in range(len(state_matrix))]
                      for j in range(len(state_matrix[0]))]
     res = [[x ^ y for x, y in zip(el_mat, el_key)] for el_mat, el_key in zip(transposed, key)]
     return [[res[i][j] for i in range(len(res))] for j in range(len(res[0]))]
 
 
-def encrypt(in_block, key, printt=False):
+def _encrypt(in_block, key, printt=False):
     in_block = list(in_block)
     key = list(key)
 
     if printt:
         print(f'\n[*] Encrypting...')
 
-    keys = key_extension(key)
+    keys = _keyExpansion(key)
     state = [[in_block[r + 4*c] for c in range(4)] for r in range(4)]
 
     if printt:
         print(f'Initial state: {state}')
 
-    state = addRoundKey(state, keys[:4])
+    state = _addRoundKey(state, keys[:4])
 
     for i in range(1, 10):
-        state = subBytes(state)
-        state = shiftRows(state)
-        state = mixColumns(state)
-        state = addRoundKey(state, keys[4*i: 4*i+4])
+        state = _subBytes(state)
+        state = _shiftRows(state)
+        state = _mixColumns(state)
+        state = _addRoundKey(state, keys[4 * i: 4 * i + 4])
 
         if printt:
             print(f'Round: {i}, state: {state}')
 
-    state = subBytes(state)
-    state = shiftRows(state)
-    state = addRoundKey(state, keys[10*4:])
+    state = _subBytes(state)
+    state = _shiftRows(state)
+    state = _addRoundKey(state, keys[10 * 4:])
 
     if printt:
         print(f'Result state: {state}')
     return [state[i][j] for j in range(len(state[0])) for i in range(len(state))]
 
 
-def decrypt(out_block, key, printt=False):
+def _decrypt(out_block, key, printt=False):
     out_block = list(out_block)
     key = list(key)
 
     if printt:
         print(f'\n[*] Decrypting...')
 
-    keys = key_extension(key)
+    keys = _keyExpansion(key)
     state = [[out_block[r + 4*c] for c in range(4)] for r in range(4)]
     if printt:
         print(f'Initial state: {state}')
 
-    state = addRoundKey(state, keys[10*4:])
+    state = _addRoundKey(state, keys[10 * 4:])
     for i in range(9, 0, -1):
-        state = invShiftRows(state)
-        state = invSubBytes(state)
+        state = _invShiftRows(state)
+        state = _invSubBytes(state)
 
         if printt:
             print(f'Round: {i}, state: {state}')
-        state = addRoundKey(state, keys[4*i: 4*i+4])
-        state = invMixColumns(state)
+        state = _addRoundKey(state, keys[4 * i: 4 * i + 4])
+        state = _invMixColumns(state)
 
-    state = invShiftRows(state)
-    state = invSubBytes(state)
-    state = addRoundKey(state, keys[0:4])
+    state = _invShiftRows(state)
+    state = _invSubBytes(state)
+    state = _addRoundKey(state, keys[0:4])
 
     if printt:
         print(f"Res state: {state}")
     return [state[i][j] for j in range(len(state[0])) for i in range(len(state))]
 
 
+class _AES_cipher:
+
+    def __init__(self, key, mode=MODE_ECB):
+        self.key = key
+        self._encrypt, self._decrypt = mode(_encrypt, _decrypt)
+
+    def encrypt(self, message):
+        return self._encrypt(message, self.key)
+
+    def decrypt(self, message):
+        return self._decrypt(message, self.key)
+
+
+def new(key, mode=MODE_ECB):
+    return _AES_cipher(key, mode)
+
+
 if __name__ == '__main__':
     test_key = [0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c]
 
-    key_extension(test_key)
+    _keyExpansion(test_key)
 
     Sbox = (
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -351,23 +371,23 @@ if __name__ == '__main__':
                   0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74,
                   0xe8, 0xcb)
 
-    R_CON = [(GFPoly(0x02) ** i).val for i in range(255)]
+    R_CON = [(_GFPoly(0x02) ** i).val for i in range(255)]
     R_CON = tuple([R_CON[-1]] + R_CON[:-1])
 
-    print("Is Sbox correct:", S_BOX == Sbox)
-    print("Is InvSbox correct", INV_S_BOX == InvSbox)
+    print("Is Sbox correct:", _S_BOX == Sbox)
+    print("Is InvSbox correct", _INV_S_BOX == InvSbox)
     print("Is Rcon correct:", R_CON == rConstants)
 
     test_key = list(range(16))
     test_block = list(range(16))
-    ciphertext = encrypt(test_key, test_block)
+    ciphertext = _encrypt(test_key, test_block)
     print("plaintext:", test_block)
     print("ciphertext:", ciphertext)
-    print("decrypted cyphertext:", decrypt(ciphertext, test_key))
+    print("decrypted cyphertext:", _decrypt(ciphertext, test_key))
 
     from Crypto.Cipher import AES
 
     cipher = AES.new(bytes(test_key), AES.MODE_ECB)
     data = bytes(test_block)
-    ciphertext = cipher.encrypt(data)
+    ciphertext = cipher._encrypt(data)
     print("ciphertext using Crypro AES:", list(ciphertext))
