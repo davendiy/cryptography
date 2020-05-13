@@ -11,6 +11,7 @@ __AES__
  - [2-d task of AES](./test/AES_test.ipynb)
 
 __SHA256__
- - [Sha256 implementation](./src/aes)
+ - [Sha256 implementation](./src/hashes/sha.py)
+ - [HMAC implementation](./src/hashes/abstract.py)
  - [tasks demo](./test/test_hash.py)
  
