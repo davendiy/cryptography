@@ -9,9 +9,13 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
+""" Module with SHA family of hash algorithms (currently only SHA256).
+"""
+
 from .abstract import Hash, HMAC
 from functools import partial
 
+# ====================== common functions ======================================
 
 def _Ch(x, y, z):
     return ( x & y ) ^ ( (~x) & z )
@@ -34,7 +38,8 @@ def _rotr(x, n, word_size=32):
 
 
 class SHA256(Hash):
-
+    """ Class that implements SHA256 algorithm as described in FIPS PUB 180-4.
+    """
     block_size = 512
     word_size = 32
     digest_size = 256
@@ -68,6 +73,7 @@ class SHA256(Hash):
         if message is not None:
             self.update(message)
 
+    # ================== SHA256 sigma functions ================================
     @staticmethod
     def _Sigma0(x):
         rotr = partial(_rotr, word_size=SHA256.word_size)
@@ -87,6 +93,8 @@ class SHA256(Hash):
     def _sigma1(x):
         rotr = partial(_rotr, word_size=SHA256.word_size)
         return rotr(x, 17) ^ rotr(x, 19) ^ _SHR(x, 10)
+
+    # ==========================================================================
 
     def padding(self):
         """ Suppose that the length of the message, M, is l bits.
@@ -110,7 +118,9 @@ class SHA256(Hash):
         return res
 
     def _get_m(self):
-
+        """ Splits the message into 512-bit blocks and
+        each block into 32-bit words.
+        """
         word_size_b = self.word_size // 8
         block_size_b = self.block_size // 8
 
@@ -181,4 +191,10 @@ class SHA256(Hash):
 
 
 def HMAC_SHA256(key, message=None):
+    """ Creates HMAC object that uses SHA256 as a hash function.
+
+    :param key:     any array of bytes
+    :param message: any array of bytes
+    :return: HMAC object
+    """
     return HMAC(SHA256, key, message)

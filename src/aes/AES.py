@@ -126,6 +126,7 @@ class _GFFourTermPoly:
     def __repr__(self):
         return str(self)
 
+# ======================= AES128 functions =====================================
 
 def _rotate_left(n, amount):
     tmp = n << amount
@@ -154,6 +155,7 @@ def _inv_sub_byte(state):
     return (_GFPoly(res) ** -1).val
 
 
+# just create our own S_BOX and INV_S_BOX
 _S_BOX = tuple([_sub_byte(i) for i in range(256)])
 _INV_S_BOX = tuple([_inv_sub_byte(i) for i in range(256)])
 
@@ -226,7 +228,7 @@ def _encrypt(in_block, key, printt=False):
     in_block = list(in_block)
     key = list(key)
 
-    if printt:
+    if printt:                # for debugging :)
         print(f'\n[*] Encrypting...')
 
     keys = _keyExpansion(key)
@@ -285,19 +287,39 @@ def _decrypt(out_block, key, printt=False):
         print(f"Res state: {state}")
     return [state[i][j] for j in range(len(state[0])) for i in range(len(state))]
 
+# ======================= end of AES128 functions ==============================
 
 class _AES_cipher:
+    """ Class that represents AES cipher with chosen encryption mode for
+    block ciphers. Structure of this class is similar to Crypto.Cipher.AES
+    (or at least it should be similar)
+
+    :param key:  any 16 bytes. Throws exception if the key has invalid length
+    :param mode: one of modes from aes.modes (MODE_CBC, MODE_ECB, MODE_CTR)
+    :param IV:   initialisation vector required by MODE_ECB and MODE_CTR.
+                 if IV is None it will be randomly chosen.
+                 useless for decryption-mode only
+    """
 
     def __init__(self, key, mode=MODE_ECB, IV=None):
         self.key = key
         self._encrypt, self._decrypt, self.IV = mode(_encrypt, _decrypt, IV)
 
-    def encrypt(self, message):
+    def encrypt(self, message) -> bytes:
         return self._encrypt(message, self.key)
 
-    def decrypt(self, message):
+    def decrypt(self, message) -> bytes:
         return self._decrypt(message, self.key)
 
 
-def new(key, mode=MODE_ECB, IV=None):
+def new(key, mode=MODE_ECB, IV=None) -> _AES_cipher:
+    """ Create new AES cipher with given mode.
+
+    :param key:  any 16 bytes. Throws exception if the key has invalid length
+    :param mode: one of modes from aes.modes (MODE_CBC, MODE_ECB, MODE_CTR)
+    :param IV:   initialisation vector required by MODE_ECB and MODE_CTR.
+                 if IV is None it will be randomly chosen.
+                 useless for decryption-mode only
+    :return: _AES_cipher object
+    """
     return _AES_cipher(key, mode, IV)

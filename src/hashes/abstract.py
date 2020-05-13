@@ -9,12 +9,18 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
+""" Module with hashes declaration and functions which don't depend on
+implementation of specific hash function (currently it's only HMAC).
+"""
+
 from abc import abstractmethod, ABC
 from ..aes.AES import new, MODE_CBC
 
 
 class Hash(ABC):
-
+    """ Interface for implementation of single hash algorithm.
+    Similar to Crypto.Hash
+    """
     block_size = 0
     word_size = 0
     digest_size = 0
@@ -37,14 +43,29 @@ class Hash(ABC):
 
 
 def create_AES_cipher(password, hash_algo, mode=MODE_CBC, IV=None):
+    """ Create AES cipher that uses hash of password instead of password itself.
+
+    :param password:  any array of bytes
+    :param hash_algo: some implementation of Hash interface
+    :param mode:      from aes.modes
+    :param IV:        initialisation vector
+    :return:
+    """
     pass_hash = hash_algo(password).digest()[-128//8:]
     cipher = new(pass_hash, mode, IV)
     return cipher
 
 
 class HMAC:
+    """ Class that allows to make a HMAC signature of message with a given key
+    using any of hash algorithms (as described by RFC 2104).
 
-    def __init__(self, hash_algo, key, message=None):
+    :param hash_algo: some implementation of Hash interface
+    :param key:       any array of bytes
+    :param message:   any array of bytes
+    """
+
+    def __init__(self, hash_algo, key: bytes, message=None):
 
         self.message = b''
         self.key = key
@@ -52,10 +73,12 @@ class HMAC:
         if message is not None:
             self.update(message)
 
-    def update(self, message):
+    def update(self, message: bytes):
+        """ Add new data to the message.
+        """
         self.message += message
 
-    def _digest(self, data):
+    def _digest(self, data: bytes):
         return self.hash_algo(data).digest()
 
     def digest(self) -> bytes:
@@ -74,8 +97,8 @@ class HMAC:
 
         return self._digest(opad + self._digest(ipad + self.message))
 
-    def hexdigest(self):
+    def hexdigest(self) -> str:
         return self.digest().hex()
 
-    def check(self, hmac):
+    def check(self, hmac) -> bool:
         return self.digest() == hmac

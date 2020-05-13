@@ -9,13 +9,33 @@
 # @Last modified by:   davidas
 # @Last modified time: 20-Feb-2020
 
+""" Block cipher modes operations.
+
+Each mode is a function wich has template
+
+mode(<block_encrypt>, <block_decrypt>, <IV>)
+            -> <stream_encrypt>, <stream_decryp>, <IV>
+"""
+
 import warnings
 from Crypto.Random import get_random_bytes
+from typing import Callable
+
 
 # ============================ CBC MODE ========================================
-def MODE_ECB(sym_cipher_enc_func: callable,
-             sym_cipher_dec_func: callable,
+def MODE_ECB(sym_cipher_enc_func: Callable[[bytes, bytes], list],
+             sym_cipher_dec_func: Callable[[bytes, bytes], list],
              IV: bytes):
+    """ Electronic codebook encryption mode for block ciphers.
+
+    :param sym_cipher_enc_func: function that gets 16-bytes block plaintext
+                                with 16-bytes key and returns 16-bytes ciphertext
+    :param sym_cipher_dec_func: function that gets 16-bytes block ciphertext
+                                with 16-bytes key and returns 16-bytes plaintext
+    :param IV: useless here, just for nice mode format
+    :return: <stream_encrypt_func>, <stream_decrypt_func>, None
+    """
+
     if IV is not None:
         warnings.warn("ECB mode doesn't require initialisation vector!", Warning)
 
@@ -41,10 +61,19 @@ def MODE_ECB(sym_cipher_enc_func: callable,
 
 
 # ============================ CBC MODE ========================================
-def MODE_CBC(sym_cipher_enc_func: callable,
-             sym_cipher_dec_func: callable,
+def MODE_CBC(sym_cipher_enc_func: Callable[[bytes, bytes], list],
+             sym_cipher_dec_func: Callable[[bytes, bytes], list],
              IV: bytes):
+    """ Cipher Block Chaining mode.
 
+    :param sym_cipher_enc_func: function that gets 16-bytes block plaintext
+                                with 16-bytes key and returns 16-bytes ciphertext
+    :param sym_cipher_dec_func: function that gets 16-bytes block ciphertext
+                                with 16-bytes key and returns 16-bytes plaintext
+    :param IV: initialisation vector. Should be 16-bytes block.
+               if it is None, IV will be chosen randomly and returned to caller.
+    :return: <stream_encrypt_func>, <stream_decrypt_func>, IV
+    """
     if IV is None:
         IV = get_random_bytes(16)
 
@@ -61,7 +90,7 @@ def MODE_CBC(sym_cipher_enc_func: callable,
 
         blocks = [message[i: i + 16] for i in range(0, len(message), 16)]
         for block in blocks:
-            block = [x ^ y for x, y in zip(prev_block, block)]
+            block = bytes([x ^ y for x, y in zip(prev_block, block)])
             block = sym_cipher_enc_func(block, key)
             res += bytes(block)
             prev_block = block
@@ -82,9 +111,19 @@ def MODE_CBC(sym_cipher_enc_func: callable,
 
 
 # ============================ CTR MODE ========================================
-def MODE_CTR(sym_cipher_enc_func: callable,
-             sym_cipher_dec_func: callable,
+def MODE_CTR(sym_cipher_enc_func: Callable[[bytes, bytes], list],
+             sym_cipher_dec_func: Callable[[bytes, bytes], list],
              IV: bytes):
+    """ Counter mode.
+
+    :param sym_cipher_enc_func: function that gets 16-bytes block plaintext
+                                with 16-bytes key and returns 16-bytes ciphertext
+    :param sym_cipher_dec_func: useless here. Just for nice template.
+
+    :param IV: initialisation vector - nonce for counter. Should be 8-bytes block.
+               if it is None, IV will be chosen randomly and returned to caller.
+    :return: <stream_encrypt_func>, <stream_decrypt_func>, IV
+    """
     if IV is None:
         IV = get_random_bytes(8)
 
