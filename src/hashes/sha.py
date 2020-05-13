@@ -9,27 +9,8 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
-from abc import abstractmethod, ABC
+from .abstract import Hash, HMAC
 from functools import partial
-
-
-class Hash(ABC):
-
-    block_size = 0
-    word_size = 0
-    digest_size = 0
-
-    @abstractmethod
-    def update(self, bytestream: bytes):
-        pass
-
-    @abstractmethod
-    def digest(self):
-        pass
-
-    @abstractmethod
-    def hexdigest(self):
-        pass
 
 
 def _Ch(x, y, z):
@@ -107,7 +88,7 @@ class SHA256(Hash):
         rotr = partial(_rotr, word_size=SHA256.word_size)
         return rotr(x, 17) ^ rotr(x, 19) ^ _SHR(x, 10)
 
-    def _do_padding(self):
+    def padding(self):
         """ Suppose that the length of the message, M, is l bits.
         Append the bit “1” to the end of the message, followed by k zero bits,
         where k is the smallest, non-negative solution to the equation
@@ -122,9 +103,11 @@ class SHA256(Hash):
         length = len(self._message) * 8
         k = (448 - length - 1) % 512
         add = '1' + '0' * k + bin(length)[2:].rjust(64, '0')
-        self._padded_mess = self._message + bytes.fromhex( hex(int(add, 2))[2:] )
+        res = self._message + bytes.fromhex( hex(int(add, 2))[2:] )
 
-        assert len(self._padded_mess) * 8 % 512 == 0
+        assert len(res) * 8 % 512 == 0
+
+        return res
 
     def _get_m(self):
 
@@ -146,7 +129,7 @@ class SHA256(Hash):
         return res
 
     def _calculate_hash(self):
-        self._do_padding()
+        self._padded_mess = self.padding()
         m = self._get_m()
         h_prev = self.H_0.copy()
         for i, cur_m in enumerate(m):
@@ -195,3 +178,7 @@ class SHA256(Hash):
         if self._hash is None:
             self._calculate_hash()
         return self._hash.hex()
+
+
+def HMAC_SHA256(key, message=None):
+    return HMAC(SHA256, key, message)

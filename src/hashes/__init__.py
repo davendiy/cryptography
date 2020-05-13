@@ -9,6 +9,7 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
-from .sha import SHA256, Hash
+from .sha import SHA256, HMAC_SHA256
+from .abstract import HMAC, Hash, create_AES_cipher
 
-__all__ = ['SHA256', 'Hash']
+__all__ = ['Hash', 'HMAC',  'create_AES_cipher', 'SHA256', 'HMAC_SHA256']
