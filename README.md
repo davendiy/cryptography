@@ -15,3 +15,8 @@ __SHA256__
  - [HMAC implementation](./src/hashes/abstract.py)
  - [tasks demo](./test/test_hash.py)
  
+ __RSA__
+ - [PKCS#1 implementation](./src/rsa/pkcs1.py)
+ - [ANS.1 coding implementation](./src/utils/asn1.py)
+ - [Random utilities for RSA](./src/utils/random.py)
+ 
