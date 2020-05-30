@@ -128,7 +128,7 @@ def MODE_CTR(sym_cipher_enc_func: Callable[[bytes, bytes], list],
         IV = get_random_bytes(8)
 
     if not isinstance(IV, bytes) or len(IV) != 8:
-        raise ValueError(f"Bad initialisation vector for CBC mode: {IV}")
+        raise ValueError(f"Bad initialisation vector for CTR mode: {IV}")
 
     def ctr_encrypt(message: bytes, key: bytes):
         if len(message) % 16:

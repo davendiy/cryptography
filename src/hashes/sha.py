@@ -17,6 +17,7 @@ from functools import partial
 
 # ====================== common functions ======================================
 
+
 def _Ch(x, y, z):
     return ( x & y ) ^ ( (~x) & z )
 
@@ -40,9 +41,10 @@ def _rotr(x, n, word_size=32):
 class SHA256(Hash):
     """ Class that implements SHA256 algorithm as described in FIPS PUB 180-4.
     """
-    block_size = 512
-    word_size = 32
-    digest_size = 256
+    _block_size = 512
+    _word_size = 32
+    _digest_size = 256
+    _input_limit = 1 << 64 - 1
 
     # SHA-224 and SHA-256 use the same sequence of sixty-four constant 32-bit
     # words. These words represent the first thirty-two bits of the
@@ -76,22 +78,22 @@ class SHA256(Hash):
     # ================== SHA256 sigma functions ================================
     @staticmethod
     def _Sigma0(x):
-        rotr = partial(_rotr, word_size=SHA256.word_size)
+        rotr = partial(_rotr, word_size=SHA256._word_size)
         return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22)
 
     @staticmethod
     def _Sigma1(x):
-        rotr = partial(_rotr, word_size=SHA256.word_size)
+        rotr = partial(_rotr, word_size=SHA256._word_size)
         return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25)
 
     @staticmethod
     def _sigma0(x):
-        rotr = partial(_rotr, word_size=SHA256.word_size)
+        rotr = partial(_rotr, word_size=SHA256._word_size)
         return rotr(x, 7) ^ rotr(x, 18) ^ _SHR(x, 3)
 
     @staticmethod
     def _sigma1(x):
-        rotr = partial(_rotr, word_size=SHA256.word_size)
+        rotr = partial(_rotr, word_size=SHA256._word_size)
         return rotr(x, 17) ^ rotr(x, 19) ^ _SHR(x, 10)
 
     # ==========================================================================
@@ -121,8 +123,8 @@ class SHA256(Hash):
         """ Splits the message into 512-bit blocks and
         each block into 32-bit words.
         """
-        word_size_b = self.word_size // 8
-        block_size_b = self.block_size // 8
+        word_size_b = self._word_size // 8
+        block_size_b = self._block_size // 8
 
         # list of 32-bits words
         tmp = [int(self._padded_mess[i: i + word_size_b].hex(), 16)
@@ -132,7 +134,7 @@ class SHA256(Hash):
         assert len(tmp) == len(self._padded_mess) // word_size_b
 
         # list of N blocks (16 32-bits words per block)
-        res = [tmp[i: i + (self.block_size // word_size_b)]
+        res = [tmp[i: i + (self._block_size // word_size_b)]
                     for i in range(0, len(tmp), block_size_b // word_size_b)]
 
         assert len(res) == (len(self._padded_mess)) // block_size_b
@@ -147,44 +149,44 @@ class SHA256(Hash):
             for t in range(16, 64):
                 w[t] = self._sigma1(w[t-2]) + w[t-7]\
                          + self._sigma0(w[t-15]) + w[t-16]
-                w[t] %= 1 << self.word_size
+                w[t] %= 1 << self._word_size
 
             a, b, c, d, e, f, g, h = h_prev
 
             for t in range(64):
                 T1 = (h + self._Sigma1(e) + _Ch(e, f, g) + self.K[t] + w[t]) \
-                     % (1 << self.word_size)
-                T2 = (self._Sigma0(a) + _Maj(a, b, c)) % (1 << self.word_size)
+                     % (1 << self._word_size)
+                T2 = (self._Sigma0(a) + _Maj(a, b, c)) % (1 << self._word_size)
                 h = g
                 g = f
                 f = e
-                e = (d + T1) % (1 << self.word_size)
+                e = (d + T1) % (1 << self._word_size)
                 d = c
                 c = b
                 b = a
-                a = (T1 + T2) % (1 << self.word_size)
+                a = (T1 + T2) % (1 << self._word_size)
 
-            h_next = [(h_prev[i] + _x) % (1 << self.word_size)
+            h_next = [(h_prev[i] + _x) % (1 << self._word_size)
                       for i, _x in enumerate([a, b, c, d, e, f, g, h])]
             h_prev = h_next
 
         self._hash = b''.join(list(map(
-            lambda x: bytes.fromhex( hex(x)[2:].rjust(self.word_size // 4, '0') ),
+            lambda x: bytes.fromhex( hex(x)[2:].rjust(self._word_size // 4, '0') ),
             h_prev
         )))
 
-        assert len(self._hash) == self.digest_size // 8
+        assert len(self._hash) == self._digest_size // 8
 
     def update(self, bytestream: bytes):
         self._message += bytestream
         self._hash = None
 
-    def digest(self):
+    def digest(self) -> bytes:
         if self._hash is None:
             self._calculate_hash()
         return self._hash
 
-    def hexdigest(self):
+    def hexdigest(self) -> str:
         if self._hash is None:
             self._calculate_hash()
         return self._hash.hex()

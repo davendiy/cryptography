@@ -16,14 +16,46 @@ implementation of specific hash function (currently it's only HMAC).
 from abc import abstractmethod, ABC
 from ..aes.AES import new, MODE_CBC
 
+BIT = 'bit'
+BYTE = 'byte'
+
 
 class Hash(ABC):
     """ Interface for implementation of single hash algorithm.
     Similar to Crypto.Hash
     """
-    block_size = 0
-    word_size = 0
-    digest_size = 0
+    _block_size = 0
+    _word_size = 0
+    _digest_size = 0
+    _input_limit = 0
+
+    @classmethod
+    def digest_size(cls, type_val=BYTE):
+        if type_val not in (BYTE, BIT):
+            raise ValueError(f"Bad type for size: {type_val}")
+
+        return cls._digest_size if type_val == BIT else cls._digest_size // 8
+
+    @classmethod
+    def block_size(cls, type_val=BYTE):
+        if type_val not in (BYTE, BIT):
+            raise ValueError(f"Bad type for size: {type_val}")
+
+        return cls._block_size if type_val == BIT else cls._block_size // 8
+
+    @classmethod
+    def word_size(cls, type_val=BYTE):
+        if type_val not in (BYTE, BIT):
+            raise ValueError(f"Bad type for size: {type_val}")
+
+        return cls._word_size if type_val == BIT else cls._word_size // 8
+
+    @classmethod
+    def input_limit(cls, type_val=BYTE):
+        if type_val not in (BYTE, BIT):
+            raise ValueError(f"Bad type for size: {type_val}")
+
+        return cls._input_limit if type_val == BIT else cls._input_limit // 8
 
     @abstractmethod
     def update(self, bytestream: bytes):
@@ -34,11 +66,11 @@ class Hash(ABC):
         pass
 
     @abstractmethod
-    def digest(self):
+    def digest(self) -> bytes:
         pass
 
     @abstractmethod
-    def hexdigest(self):
+    def hexdigest(self) -> str:
         pass
 
 
@@ -85,12 +117,12 @@ class HMAC:
         key = self.key
 
         # Keys longer than blockSize are shortened by hashing them
-        if len(key) > self.hash_algo.block_size // 8:
+        if len(key) > self.hash_algo.block_size(type_val=BYTE):
             key = self._digest(key)
 
         # Keys shorter than blockSize are padded to blockSize
         # by padding with zeros on the right
-        key = key.ljust(self.hash_algo.block_size // 8, b'\x00')
+        key = key.ljust(self.hash_algo.block_size(type_val=BYTE), b'\x00')
 
         opad = bytes([_x ^ 0x5c for _x in key])
         ipad = bytes([_x ^ 0x36 for _x in key])
